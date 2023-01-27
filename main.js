@@ -126,57 +126,52 @@ function init(){
     const board = new Board(640, 640)
 
     const queen = new Piece(5, 1,
-        [
-            [1, {x:10, y:0, flip:true, step:1}, 
+            {ortho: true, diagonal: true, 
+                ortho_moves: [
+                {x:10, y:0, flip:true, step:1}, 
                 {x:-10, y:0, flip:true, step:1},
                 {x:0, y:10, flip:true, step:1},
                 {x:0, y:-10, flip:true, step:1},
-                // {x:-3, y:3, flip:false, step:1}
-            ],  //cardinal directions,
-            [1, {x:10, y:1, step:1, allDiagonalDirections:true}, 
-                // {x:9, y:1, step:1, allDiagonalDirections:false}
-            ]  //diagonal directions
-            //could also do [1, {x:0, y:1}, {x:0, y:-1}] to go backwards and forwards
-        ]
-        , 
-        [
-            [1, {x:10, y:0, flip:true, step:1}, 
+                ],
+                diagonal_moves:[
+                    {x:10, y:1, step:1, allDiagonalDirections:true}
+                ]   
+            },
+            {ortho: true, diagonal: true, 
+                ortho_moves: [
+                {x:10, y:0, flip:true, step:1}, 
                 {x:-10, y:0, flip:true, step:1},
                 {x:0, y:10, flip:true, step:1},
                 {x:0, y:-10, flip:true, step:1},
-                // {x:-3, y:3, flip:false, step:1}
-            ],  //cardinal directions,
-            [1, {x:10, y:1, step:1, allDiagonalDirections:true}, 
-                // {x:9, y:1, step:1, allDiagonalDirections:false}
-            ]  //diagonal directions
-        ]
+                ],
+                diagonal_moves:[
+                    {x:10, y:1, step:1, allDiagonalDirections:true}
+                ]   
+            }
         , "images/bocchiball.png", "Queen", "STRICT", board
         )
 
     const pawn = new Piece(5, 5, 
-        [
-            [1, {x:0, y:1, flip:true, step:1}, 
-                // {x:-3, y:3, flip:false, step:1}
-            ],  //cardinal directions,
-            [0, {x:-2, y:1, step:1, allDiagonalDirections:true}, 
-                // {x:9, y:1, step:1, allDiagonalDirections:false}
-            ]  //diagonal directions
-            //could also do [1, {x:0, y:1}, {x:0, y:-1}] to go backwards and forwards
-        ]
-        , 
-        [
-            [0, {x:0, y:1, flip:true, step:1}, 
-                // {x:-3, y:3, flip:false, step:1}
-            ],  //cardinal directions,
-            [1, {x:1, y:1, step:1, allDiagonalDirections:false},
-                {x:-1, y:1, step:1, allDiagonalDirections:false}, 
-                // {x:9, y:1, step:1, allDiagonalDirections:false}
-            ]  //diagonal directions
-        ]
-        , "images/boccher.png", "Pawn", "STRICT", board);
+        {ortho: true, diagonal: false, 
+            ortho_moves: [
+                {x:0, y:1, flip:true, step:1}
+            ],
+            diagonal_moves:[
+            ]   
+        }, 
+        {ortho: false, diagonal: true, 
+            ortho_moves: [
+            ],
+            diagonal_moves:[
+                {x:1, y:1, step:1, allDiagonalDirections:false},
+                {x:-1, y:1, step:1, allDiagonalDirections:false}
+            ]   
+        },
+        "images/boccher.png", "Pawn", "STRICT", board);
         const knight = new Piece(3, 5, 
-            [
-                [1, {x:1, y:2, flip:true, step:1}, 
+            {ortho: true, diagonal: false, 
+                ortho_moves: [
+                    {x:1, y:2, flip:true, step:1}, 
                     {x:-1, y:2, flip:true, step:1}, 
                     {x:2, y:1, flip:true, step:1}, 
                     {x:-2, y:1, flip:true, step:1}, 
@@ -184,13 +179,13 @@ function init(){
                     {x:-2, y:-1, flip:true, step:1}, 
                     {x:1, y:-2, flip:true, step:1}, 
                     {x:-1, y:-2, flip:true, step:1}, 
-                ],  //cardinal directions,
-                [0] //diagonal directions
-                //could also do [1, {x:0, y:1}, {x:0, y:-1}] to go backwards and forwards
-            ]
-            , 
-            [
-                [1, {x:1, y:2, flip:true, step:1}, 
+                ],
+                diagonal_moves:[
+                ]   
+            },
+            {ortho: true, diagonal: false, 
+                ortho_moves: [
+                    {x:1, y:2, flip:true, step:1}, 
                     {x:-1, y:2, flip:true, step:1}, 
                     {x:2, y:1, flip:true, step:1}, 
                     {x:-2, y:1, flip:true, step:1}, 
@@ -198,11 +193,11 @@ function init(){
                     {x:-2, y:-1, flip:true, step:1}, 
                     {x:1, y:-2, flip:true, step:1}, 
                     {x:-1, y:-2, flip:true, step:1}, 
-                    // {x:-3, y:3, flip:false, step:1}
-                ],  //cardinal directions,
-                [0]  //diagonal directions
-            ]
-            , "images/ryo.png", "KNIGHT", "JUMP_STRICT", board);
+                ],
+                diagonal_moves:[
+                ]   
+            }, 
+            "images/ryo.png", "KNIGHT", "JUMP_STRICT", board);
     board.pieces.push(pawn)
     board.pieces.push(queen)
     board.pieces.push(knight)

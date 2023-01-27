@@ -1,8 +1,10 @@
 class Piece {
     constructor(x, y, raw_move_range, raw_attack_range, icon, name, move_trait, board){
         this.name = name
+        this.side_name;
         this.raw_move_range = raw_move_range;
         this.moves_list = [{x:this.x, y:this.y}];
+        this.attackable_pieces = []
         this.raw_attack_range = raw_attack_range;
         this.attack_move_list = [];
         this.x = (x - 1) * 80 + 80/2;
@@ -20,8 +22,16 @@ class Piece {
     }
 
     update(){
-        this.translateRangeToCoords(this.raw_move_range, "MOVE");
-        this.translateRangeToCoords(this.raw_attack_range, "ATTACK");
+        this.moves_list = []
+        this.attack_move_list = []
+        this.attackable_pieces = []
+        // this.translateRangeToCoords(this.raw_move_range, "MOVE");
+        // this.translateRangeToCoords(this.raw_attack_range, "ATTACK");
+        this.orthoToCoords(this.raw_move_range, "MOVE")
+        this.orthoToCoords(this.raw_attack_range, "ATTACK")
+        this.diagonalToCoords(this.raw_move_range, "MOVE")
+        this.diagonalToCoords(this.raw_attack_range, "ATTACK")
+
         this.moves_list.push({x:this.x, y:this.y});
         // console.log(this.attack_move_list)
         // console.log(this.moves_list)
@@ -58,80 +68,203 @@ class Piece {
         return false;
     }
 
-    translateRangeToCoords(raw, type){
+    orthoToCoords(raw, type){
+        let default_stop = false;
+        if(type == "ATTACK"){
+            default_stop = true;
+            // console.log("Attack")
+        }
+        let coord_array = [];
+
+        if(!raw.ortho) return;
+        raw.ortho_moves.forEach(dir => { //for each ortho direction
+
+            // console.log(this.name, dir.x, dir.y)
+            // console.log("draw   ")
+            let x_sign = Math.sign(dir.x)
+            let y_sign = Math.sign(dir.y)
+
+
+            if(this.move_trait == "JUMP_STRICT"){
+                let stop = default_stop;
+                this.board.pieces.forEach(piece => {
+                    if(piece.x == this.x + dir.x * 80 && piece.y == this.y - dir.y * 80){
+                        if(type == "MOVE"){
+                            this.attackable_pieces.push({x:piece.x, y:piece.y})
+                        }
+
+                        stop = !default_stop;
+                    }
+                })
+                if(!stop){coord_array.push({x:this.x + dir.x * 80, y:this.y - dir.y * 80});}
+
+            } else if(this.move_trait == "JUMP" || this.move_trait == "STRICT"){
+            //this mess needs to be fixed somehow
+            if(dir.flip){
+                let stop = default_stop;
+                // console.log(type)
+                for(let y = 1; y < Math.abs(dir.y) + 1; y+=dir.step){
+                    this.board.pieces.forEach(piece => {
+                        // console.log(type)
+                        // if(type == "ATTACK" && this.name == "Queen"){
+                        //     console.log(dir)
+                        //     // console.log(Math.abs(dir.y))
+                        //     console.log(this.x, this.y - y * 80 * y_sign)
+                        //     // console.log(piece.x, piece.y)
+                        // }
+                        // if(type == "MOVE" && this.name == "Queen"){
+                        //     console.log(dir)
+                        //     console.log(this.x, this.y - y * 80 * y_sign)
+                        //     // console.log(piece.x, piece.y)
+                        // }
+                        if(piece.x == this.x && piece.y == this.y - y * 80 * y_sign){
+                            // console.log(type)
+                            if(type == "MOVE"){
+                                // console.log("Move")
+                                this.attackable_pieces.push({x:piece.x, y:piece.y})
+                                stop = !default_stop;
+                            } else if(type == "ATTACK"){
+                                console.log("Attack")
+                                this.attackable_pieces.forEach(attackable_piece =>{
+                                    console.log(this.x, this.y - y * 80 * y_sign)
+                                    if(this.x == attackable_piece.x && this.y - y * 80 * y_sign == attackable_piece.y){
+                                        // console.log("attackable piece")
+                                        coord_array.push({x: this.x, y: this.y - y * 80 * y_sign});
+                                        // stop = !default_stop;
+                                    }
+                                })
+                            }
+                        }
+                    })
+                    //if move hits piece
+                    //push piece as attackable
+                    //break
+                    //else push possible range coord
+
+                    //if attack hits piece
+                    //check if in attackable_pieces
+                    //
+                    if(type != "ATTACK"){
+                    // console.log(type)
+                        if(!stop){coord_array.push({x: this.x, y: this.y - y * 80 * y_sign});}
+                        else{
+                            break;
+                        } //move => piece not in way attack=> piece in way
+                    }
+                }
+                stop = default_stop;
+                for(let x = 1; x < Math.abs(dir.x) + 1; x+=dir.step){
+                    this.board.pieces.forEach(piece => {
+                        if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y - dir.y * 80){
+                            if(type == "MOVE"){
+                                // console.log("Move")
+                                this.attackable_pieces.push({x:piece.x, y:piece.y})
+                                stop = !default_stop;
+                            } else if(type == "ATTACK"){
+                                // console.log("Attack")
+                                this.attackable_pieces.forEach(attackable_piece =>{
+                                    // console.log(this.x, this.y - y * 80 * y_sign)
+                                    if(this.x + x * 80 * x_sign == attackable_piece.x && this.y - dir.y * 80 == attackable_piece.y){
+                                        // console.log("attackable piece")
+                                        coord_array.push({x: this.x + x * 80 * x_sign, y: this.y - dir.y * 80});
+                                        // stop = !default_stop;
+                                    }
+                                })
+                            }
+                        }
+                    })
+
+                    if(type != "ATTACK"){
+                        if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y - dir.y * 80});}
+                        else {
+                            break;
+                        }
+                    }
+                }
+
+            } else {
+
+                let stop = default_stop;
+                for(let x = 1; x < Math.abs(dir.x) + 1; x+=dir.step){
+                    this.board.pieces.forEach(piece => {
+                        if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y){
+                            if(type == "MOVE"){
+                                // console.log("Move")
+                                this.attackable_pieces.push({x:piece.x, y:piece.y})
+                                stop = !default_stop;
+                            } else if(type == "ATTACK"){
+                                // console.log("Attack")
+                                this.attackable_pieces.forEach(attackable_piece =>{
+                                    // console.log(this.x, this.y - y * 80 * y_sign)
+                                    if(this.x + x * 80 * x_sign == attackable_piece.x && this.y == attackable_piece.y){
+                                        // console.log("attackable piece")
+                                        coord_array.push({x: this.x + x * 80 * x_sign, y: this.y});
+                                        // stop = !default_stop;
+                                    }
+                                })
+                            }
+                        }
+                    })
+
+                    if(type != "ATTACK"){
+                        if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y});}
+                        else {
+                            break;
+                        }
+                    }
+                }
+                stop = default_stop;
+                for(let y = 1; y < Math.abs(dir.y) + 1; y+=dir.step){
+                    this.board.pieces.forEach(piece => {
+                        if(piece.x == this.x + dir.x * 80 && piece.y == this.y - y * 80 * y_sign){
+                            if(type == "MOVE"){
+                                // console.log("Move")
+                                this.attackable_pieces.push({x:piece.x, y:piece.y})
+                                stop = !default_stop;
+                            } else if(type == "ATTACK"){
+                                // console.log("Attack")
+                                this.attackable_pieces.forEach(attackable_piece =>{
+                                    // console.log(this.x, this.y - y * 80 * y_sign)
+                                    if(this.x + dir.x * 80 == attackable_piece.x && this.y - y * 80 * y_sign == attackable_piece.y){
+                                        // console.log("attackable piece")
+                                        coord_array.push({x: this.x + dir.x * 80, y: this.y - y * 80 * y_sign});
+                                        // stop = !default_stop;
+                                    }
+                                })
+                            }
+                        }
+                    })
+
+                    if(type != "ATTACK"){
+                        if(!stop){coord_array.push({x:this.x + dir.x * 80, y:this.y - y * 80 * y_sign});}
+                        else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        });
+
+        for(let i = 0; i < coord_array.length; i++){
+            if(type == "MOVE"){
+                this.moves_list.push(coord_array[i]);
+            } else if(type == "ATTACK"){
+                this.attack_move_list.push(coord_array[i]);
+            }
+        }
+    }
+
+    diagonalToCoords(raw, type){
         let default_stop = false;
         if(type == "ATTACK"){
             default_stop = true;
         }
         let coord_array = [];
-        let counter = 0;
 
-        if(raw[0][0] > 0){ //if allow movement IN ORTHO DIRECTION
-            // console.log("allow draw")
-            raw[0].forEach(dir => { //for each ortho direction
-
-                // console.log(this.name, dir.x, dir.y)
-                // console.log("draw   ")
-                let x_sign = Math.sign(dir.x)
-                let y_sign = Math.sign(dir.y)
-
-
-                if(this.move_trait == "JUMP_STRICT"){
-                    let stop = default_stop;
-                    this.board.pieces.forEach(piece => {
-                        if(piece.x == this.x + dir.x * 80 && piece.y == this.y - dir.y * 80){
-                            stop = !stop;
-                        }
-                    })
-                    if(!stop){coord_array.push({x:this.x + dir.x * 80, y:this.y - dir.y * 80})}
-                } else if(this.move_trait == "JUMP" || this.move_trait == "STRICT"){
-                //this mess needs to be fixed somehow
-                if(dir.flip){
-                    let stop = default_stop;
-                    for(let y = 1; y < Math.abs(dir.y) + 1; y+=dir.step){
-                        this.board.pieces.forEach(piece => {
-                            if(piece.x == this.x && piece.y == this.y - y * 80 * y_sign){
-                                stop = !stop;
-                            }
-                        })
-                        if(!stop){coord_array.push({x: this.x, y: this.y - y * 80 * y_sign});}
-                    }
-                    stop = default_stop;
-                    for(let x = 1; x < Math.abs(dir.x) + 1; x+=dir.step){
-                        this.board.pieces.forEach(piece => {
-                            if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y - dir.y * 80){
-                                stop = !stop;
-                            }
-                        })
-                        if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y - dir.y * 80});}
-                    }
-                } else {
-                    let stop = default_stop;
-                    for(let x = 1; x < Math.abs(dir.x) + 1; x+=dir.step){
-                        this.board.pieces.forEach(piece => {
-                            if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y){
-                                stop = !stop;
-                            }
-                        })
-                        if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y});}
-                    }
-                    stop = default_stop;
-                    for(let y = 1; y < Math.abs(dir.y) + 1; y+=dir.step){
-                        this.board.pieces.forEach(piece => {
-                            if(piece.x == this.x + dir.x * 80 && piece.y == this.y - y * 80 * y_sign){
-                                stop = !stop;
-                            }
-                        })
-                        if(!stop){coord_array.push({x:this.x + dir.x * 80, y:this.y - y * 80 * y_sign});}
-                    }
-                }
-            }
-            });
-        }
-        // console.log()
-        if(raw[1][0] > 0){
+        if(raw.diagonal){
             // console.log("diaonglas")
-            raw[1].forEach(dir => {
+            raw.diagonal_moves.forEach(dir => {
                 let x_sign = Math.sign(dir.x)
                 let y_sign = Math.sign(dir.y)
 
@@ -159,11 +292,27 @@ class Piece {
                             }
                             this.board.pieces.forEach(piece => {
                                 if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y - x * 80 * y_sign){
-                                    stop = !stop;
-                                    
+                                    if(type == "MOVE"){
+                                        // console.log("Move")
+                                        this.attackable_pieces.push({x:piece.x, y:piece.y})
+                                        stop = !default_stop;
+                                    } else if(type == "ATTACK"){
+                                        // console.log("Attack")
+                                        this.attackable_pieces.forEach(attackable_piece =>{
+                                            // console.log(this.x, this.y - y * 80 * y_sign)
+                                            if(this.x + x * 80 * x_sign == attackable_piece.x && this.y - dir.y * 80 == attackable_piece.y){
+                                                // console.log("attackable piece")
+                                                coord_array.push({x: this.x + x * 80 * x_sign, y: this.y - dir.y * 80});
+                                                // stop = !default_stop;
+                                            }
+                                        })
+                                    }
                                 }
                             })
                             if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y - x * 80 * y_sign});}
+                            else {
+                                break;
+                            }
                         }
                     }
                     return;
@@ -175,27 +324,28 @@ class Piece {
                     }
                     this.board.pieces.forEach(piece => {
                         if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y - x * 80 * y_sign){
-                            stop = !stop;
+                            if(type == "MOVE"){
+                                this.attackable_pieces.push({x:piece.x, y:piece.y})
+                            }
+                            stop = !default_stop;
                         }
                     })
                     if(!stop){coord_array.push({x: this.x + x * 80 * x_sign, y:this.y - x * 80 * y_sign});}
+                    else {
+                        break;
+                    }
                 }
             })
         }
 
-        console.log(counter)
-
-        if(type == "MOVE"){
-            this.moves_list = coord_array;
-        } else if(type == "ATTACK"){
-            this.attack_move_list = coord_array;
+        for(let i = 0; i < coord_array.length; i++){
+            if(type == "MOVE"){
+                this.moves_list.push(coord_array[i]);
+            } else if(type == "ATTACK"){
+                this.attack_move_list.push(coord_array[i]);
+            }
         }
-        // console.log("interpreter ran " + type)
     }
-
-    // draw(w, h, x, y){
-    //     this.icon.addEventListener("load",()=>{this.context.drawImage(this.icon, x, y, w, h)}, false)
-    // }
 
 
 
@@ -230,3 +380,7 @@ class Piece {
 //pieces block range
 //jump strict
 //only at end of line
+
+//move range processes first, then attack range processes
+//move range stops before entity, attack range only adds at entities
+//
