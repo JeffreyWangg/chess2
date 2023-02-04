@@ -1,386 +1,207 @@
 class Piece {
-    constructor(x, y, raw_move_range, raw_attack_range, icon, name, move_trait, board){
-        this.name = name
-        this.side_name;
-        this.raw_move_range = raw_move_range;
-        this.moves_list = [{x:this.x, y:this.y}];
-        this.attackable_pieces = []
-        this.raw_attack_range = raw_attack_range;
-        this.attack_move_list = [];
-        this.x = (x - 1) * 80 + 80/2;
-        this.y = (y - 1) * 80 + 80/2;
-        this.move_trait = move_trait
+    constructor(board, name, side, image, init_x, init_y, move_range, attack_range, offsets = [8, 1, -8, -1, 9, -7, -9, 7]){
+        this.board = board;
+        this.name = name;
+        this.side = side; //we'll see if this is useful
+        this.image = new Image();
+        this.image.src = image;
+        this.coords = {x: init_x - 1, y: init_y - 1} //0 indexed
+        this.board_index = (init_x - 1) + (init_y-1) * this.board.height;
+        // console.log(this.board_index)
 
-        this.icon = new Image();
-        this.icon.src = icon;
-        this.held = false;
-        this.board = board
+        this.offsets = offsets
+        this.move_range = move_range; //object
+        this.attack_range = attack_range; //object
+        this.legal_tiles = [];
     }
+
+    updatePiece(){
+
+        // console.log(this.name)
+        this.legal_tiles = []
+        this.getMoveableTilesInRange();
+        this.getAttackablePiecesInRange();
+
+        // console.log(this.board_index)
+        // console.log(this.legal_tiles)
+        // console.log(this.name)
+    }
+
+    getMoveableTilesInRange(){
+
+        for(let i = 0; i < this.move_range.length; i++){ //for every direction
+
+            let rangeMax = this.move_range[i];
+            if(this.move_range[i] > 9) rangeMax = board.width
+
+            for(let j = 1; j < rangeMax + 1; j++){ //for every tile that the piece can go in said direction
+
+                if(this.move_range[i] == 0) break; //if range is 0, break
+                
+                let new_pos = this.board_index + this.offsets[i] * j
+
+                let new_pos_coords = this.board.translateBoardIndexToCoords(new_pos)
+                let offset_coords = this.translateOffsetToCoords(this.offsets[i])
+
+                if(!this.isInValidColumnRow(this.offsets[i])) break; //works for now
+            
+                if(this.board.state[new_pos]) break;
+
+
+                this.legal_tiles.push(new_pos);
+
+                if(new_pos_coords.x + offset_coords.x < 0 || new_pos_coords.x + offset_coords.x > this.board.width - 1 || 
+                    new_pos_coords.y + offset_coords.y < 0 || new_pos_coords.y + offset_coords.y > this.board.width - 1) break;
+            }
+        }
+    }
+
+    getAttackablePiecesInRange(){
+        for(let i = 0; i < this.attack_range.length; i++){ //for every direction
+
+            let rangeMax = this.attack_range[i];
+            if(this.attack_range[i] > 9) rangeMax = board.width
+
+            for(let j = 1; j < rangeMax + 1; j++){ //for every tile that the piece can go in said direction
+
+                if(this.attack_range[i] == 0) break; //if range is 0, break
+                
+                let new_pos = this.board_index + this.offsets[i] * j
+
+                let new_pos_coords = this.board.translateBoardIndexToCoords(new_pos)
+                let offset_coords = this.translateOffsetToCoords(this.offsets[i])
+
+                if(!this.isInValidColumnRow(this.offsets[i])) break; //works for now
+
+                if(this.board.state[new_pos]){
+                    this.legal_tiles.push(new_pos); //if piece exist
+                }
+
+                if(new_pos_coords.x + offset_coords.x < 0 || new_pos_coords.x + offset_coords.x > this.board.width - 1 || 
+                    new_pos_coords.y + offset_coords.y < 0 || new_pos_coords.y + offset_coords.y > this.board.width - 1) break;
+            }
+        }
+    }
+
+
+    //case -1 not working on 1 file  => fixed?
+    //side ranges not working past 1st on 0th row/ 7th row
+    //vertical ranges not working past 1st on 0th column/ 7th column
     
-    getName(){
-        return this.name
-    }
+    translateOffsetToCoords(offset){
+        if(offset < 0){ //when negative ie -15, -6, -4
+            if(offset >= -4){
 
-    update(){
-        this.moves_list = []
-        this.attack_move_list = []
-        this.attackable_pieces = []
-        // this.translateRangeToCoords(this.raw_move_range, "MOVE");
-        // this.translateRangeToCoords(this.raw_attack_range, "ATTACK");
-        this.orthoToCoords(this.raw_move_range, "MOVE")
-        this.orthoToCoords(this.raw_attack_range, "ATTACK")
-        this.diagonalToCoords(this.raw_move_range, "MOVE")
-        this.diagonalToCoords(this.raw_attack_range, "ATTACK")
-
-        this.moves_list.push({x:this.x, y:this.y});
-        // console.log(this.attack_move_list)
-        // console.log(this.moves_list)
-    }
-
-    draw(w, h,context, x=this.x, y=this.y){
-        // this.icon.addEventListener("load",()=>{
-            context.drawImage(this.icon, x-80/2, y-80/2, w, h)
-        // }, false)
-        // console.log("draw")
-    }
-
-    draw_range(context){
-        // console.log("draw begin")
-        for(let i = 0; i < this.moves_list.length; i++){
-            context.strokeStyle = "white"
-            context.beginPath();
-            context.arc(this.moves_list[i].x, this.moves_list[i].y, 25, 0, 2 * Math.PI);
-            context.stroke();
-        }
-    }
-
-    //if in a range's x and y
-
-    inMoveRange(x, y){
-        for(let i = 0; i < this.moves_list.length; i++){
-            let moves_list_x = this.moves_list[i].x;
-            let moves_list_y = this.moves_list[i].y;
-            if(x < moves_list_x + 80/2 && x > moves_list_x - 80/2 &&
-            y < moves_list_y + 80/2 && y >moves_list_y - 80/2){
-                return true;
+                return {x: offset, y:0}
             }
-        }
-        return false;
-    }
 
-    orthoToCoords(raw, type){
-        let default_stop = false;
-        if(type == "ATTACK"){
-            default_stop = true;
-            // console.log("Attack")
-        }
-        let coord_array = [];
+            let y = ((offset-4) + (Math.abs(offset-4) % this.board.width)) / this.board.width; //-15 => -2    -6 => -1
+            let x = offset - y * this.board.width // -15 => 1   -6 => 2
 
-        if(!raw.ortho) return;
-        raw.ortho_moves.forEach(dir => { //for each ortho direction
+            return {x:x, y:y}
 
-            // console.log(this.name, dir.x, dir.y)
-            // console.log("draw   ")
-            let x_sign = Math.sign(dir.x)
-            let y_sign = Math.sign(dir.y)
+        } else if(offset >= 0){
+            if(offset <= 4){
 
-
-            if(this.move_trait == "JUMP_STRICT"){
-                let stop = default_stop;
-                this.board.pieces.forEach(piece => {
-                    if(piece.x == this.x + dir.x * 80 && piece.y == this.y - dir.y * 80){
-                        if(type == "MOVE"){
-                            this.attackable_pieces.push({x:piece.x, y:piece.y})
-                        }
-
-                        stop = !default_stop;
-                    }
-                })
-                if(!stop){coord_array.push({x:this.x + dir.x * 80, y:this.y - dir.y * 80});}
-
-            } else if(this.move_trait == "JUMP" || this.move_trait == "STRICT"){
-            //this mess needs to be fixed somehow
-            if(dir.flip){
-                let stop = default_stop;
-                // console.log(type)
-                for(let y = 1; y < Math.abs(dir.y) + 1; y+=dir.step){
-                    this.board.pieces.forEach(piece => {
-                        // console.log(type)
-                        // if(type == "ATTACK" && this.name == "Queen"){
-                        //     console.log(dir)
-                        //     // console.log(Math.abs(dir.y))
-                        //     console.log(this.x, this.y - y * 80 * y_sign)
-                        //     // console.log(piece.x, piece.y)
-                        // }
-                        // if(type == "MOVE" && this.name == "Queen"){
-                        //     console.log(dir)
-                        //     console.log(this.x, this.y - y * 80 * y_sign)
-                        //     // console.log(piece.x, piece.y)
-                        // }
-                        if(piece.x == this.x && piece.y == this.y - y * 80 * y_sign){
-                            // console.log(type)
-                            if(type == "MOVE"){
-                                // console.log("Move")
-                                this.attackable_pieces.push({x:piece.x, y:piece.y})
-                                stop = !default_stop;
-                            } else if(type == "ATTACK"){
-                                console.log("Attack")
-                                this.attackable_pieces.forEach(attackable_piece =>{
-                                    console.log(this.x, this.y - y * 80 * y_sign)
-                                    if(this.x == attackable_piece.x && this.y - y * 80 * y_sign == attackable_piece.y){
-                                        // console.log("attackable piece")
-                                        coord_array.push({x: this.x, y: this.y - y * 80 * y_sign});
-                                        // stop = !default_stop;
-                                    }
-                                })
-                            }
-                        }
-                    })
-                    //if move hits piece
-                    //push piece as attackable
-                    //break
-                    //else push possible range coord
-
-                    //if attack hits piece
-                    //check if in attackable_pieces
-                    //
-                    if(type != "ATTACK"){
-                    // console.log(type)
-                        if(!stop){coord_array.push({x: this.x, y: this.y - y * 80 * y_sign});}
-                        else{
-                            break;
-                        } //move => piece not in way attack=> piece in way
-                    }
-                }
-                stop = default_stop;
-                for(let x = 1; x < Math.abs(dir.x) + 1; x+=dir.step){
-                    this.board.pieces.forEach(piece => {
-                        if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y - dir.y * 80){
-                            if(type == "MOVE"){
-                                // console.log("Move")
-                                this.attackable_pieces.push({x:piece.x, y:piece.y})
-                                stop = !default_stop;
-                            } else if(type == "ATTACK"){
-                                // console.log("Attack")
-                                this.attackable_pieces.forEach(attackable_piece =>{
-                                    // console.log(this.x, this.y - y * 80 * y_sign)
-                                    if(this.x + x * 80 * x_sign == attackable_piece.x && this.y - dir.y * 80 == attackable_piece.y){
-                                        // console.log("attackable piece")
-                                        coord_array.push({x: this.x + x * 80 * x_sign, y: this.y - dir.y * 80});
-                                        // stop = !default_stop;
-                                    }
-                                })
-                            }
-                        }
-                    })
-
-                    if(type != "ATTACK"){
-                        if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y - dir.y * 80});}
-                        else {
-                            break;
-                        }
-                    }
-                }
-
-            } else {
-
-                let stop = default_stop;
-                for(let x = 1; x < Math.abs(dir.x) + 1; x+=dir.step){
-                    this.board.pieces.forEach(piece => {
-                        if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y){
-                            if(type == "MOVE"){
-                                // console.log("Move")
-                                this.attackable_pieces.push({x:piece.x, y:piece.y})
-                                stop = !default_stop;
-                            } else if(type == "ATTACK"){
-                                // console.log("Attack")
-                                this.attackable_pieces.forEach(attackable_piece =>{
-                                    // console.log(this.x, this.y - y * 80 * y_sign)
-                                    if(this.x + x * 80 * x_sign == attackable_piece.x && this.y == attackable_piece.y){
-                                        // console.log("attackable piece")
-                                        coord_array.push({x: this.x + x * 80 * x_sign, y: this.y});
-                                        // stop = !default_stop;
-                                    }
-                                })
-                            }
-                        }
-                    })
-
-                    if(type != "ATTACK"){
-                        if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y});}
-                        else {
-                            break;
-                        }
-                    }
-                }
-                stop = default_stop;
-                for(let y = 1; y < Math.abs(dir.y) + 1; y+=dir.step){
-                    this.board.pieces.forEach(piece => {
-                        if(piece.x == this.x + dir.x * 80 && piece.y == this.y - y * 80 * y_sign){
-                            if(type == "MOVE"){
-                                // console.log("Move")
-                                this.attackable_pieces.push({x:piece.x, y:piece.y})
-                                stop = !default_stop;
-                            } else if(type == "ATTACK"){
-                                // console.log("Attack")
-                                this.attackable_pieces.forEach(attackable_piece =>{
-                                    // console.log(this.x, this.y - y * 80 * y_sign)
-                                    if(this.x + dir.x * 80 == attackable_piece.x && this.y - y * 80 * y_sign == attackable_piece.y){
-                                        // console.log("attackable piece")
-                                        coord_array.push({x: this.x + dir.x * 80, y: this.y - y * 80 * y_sign});
-                                        // stop = !default_stop;
-                                    }
-                                })
-                            }
-                        }
-                    })
-
-                    if(type != "ATTACK"){
-                        if(!stop){coord_array.push({x:this.x + dir.x * 80, y:this.y - y * 80 * y_sign});}
-                        else {
-                            break;
-                        }
-                    }
-                }
+                return {x:offset, y:0};
             }
-        }
-        });
 
-        for(let i = 0; i < coord_array.length; i++){
-            if(type == "MOVE"){
-                this.moves_list.push(coord_array[i]);
-            } else if(type == "ATTACK"){
-                this.attack_move_list.push(coord_array[i]);
-            }
+            let y = ((offset+4) - ((offset+4) % this.board.width)) / this.board.width; //10 - 2 / 8 = 1
+            let x = offset - y * this.board.width; // 2
+
+            return {x:x, y:y}
         }
     }
 
-    diagonalToCoords(raw, type){
-        let default_stop = false;
-        if(type == "ATTACK"){
-            default_stop = true;
-        }
-        let coord_array = [];
+    isInValidColumnRow(offset){ //ugly as hell
+        let row_valid;
+        let column_valid;
 
-        if(raw.diagonal){
-            // console.log("diaonglas")
-            raw.diagonal_moves.forEach(dir => {
-                let x_sign = Math.sign(dir.x)
-                let y_sign = Math.sign(dir.y)
+        //starts jumping at -5/5
+        //anything above is a jumper
+        //for jumpers, max is just the board maximum - their x and shift their x over based on proportion 
 
-                if(dir.allDiagonalDirections){
-                    let stop = default_stop;
-                    for(let i = 0; i < 4; i++){
-                        switch(i){
-                            case 0:
-                                x_sign = -1, y_sign = 1;
-                                break;
-                            case 1:
-                                x_sign = -1, y_sign = -1;
-                                break;
-                            case 2:
-                                x_sign = 1, y_sign = -1;
-                                break;
-                            case 3:
-                                x_sign = 1, y_sign = 1;
-                                break;
-                        }
-                        stop = default_stop
-                        for(let x = 1; x < Math.abs(dir.x) + 1; x++){
-                            if(this.move_trait == "JUMP_STRICT"){
-                                x = Math.abs(dir.x)
-                            }
-                            this.board.pieces.forEach(piece => {
-                                if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y - x * 80 * y_sign){
-                                    if(type == "MOVE"){
-                                        // console.log("Move")
-                                        this.attackable_pieces.push({x:piece.x, y:piece.y})
-                                        stop = !default_stop;
-                                    } else if(type == "ATTACK"){
-                                        // console.log("Attack")
-                                        this.attackable_pieces.forEach(attackable_piece =>{
-                                            // console.log(this.x, this.y - y * 80 * y_sign)
-                                            if(this.x + x * 80 * x_sign == attackable_piece.x && this.y - dir.y * 80 == attackable_piece.y){
-                                                // console.log("attackable piece")
-                                                coord_array.push({x: this.x + x * 80 * x_sign, y: this.y - dir.y * 80});
-                                                // stop = !default_stop;
-                                            }
-                                        })
-                                    }
-                                }
-                            })
-                            if(!stop){coord_array.push({x:this.x + x * 80 * x_sign, y:this.y - x * 80 * y_sign});}
-                            else {
-                                break;
-                            }
-                        }
-                    }
-                    return;
-                }
-                let stop = default_stop;
-                for(let x = 1; x < Math.abs(dir.x) + 1; x++){
-                    if(this.move_trait == "JUMP_STRICT"){
-                        x = Math.abs(dir.x)
-                    }
-                    this.board.pieces.forEach(piece => {
-                        if(piece.x == this.x + x * 80 * x_sign && piece.y == this.y - x * 80 * y_sign){
-                            if(type == "MOVE"){
-                                this.attackable_pieces.push({x:piece.x, y:piece.y})
-                            }
-                            stop = !default_stop;
-                        }
-                    })
-                    if(!stop){coord_array.push({x: this.x + x * 80 * x_sign, y:this.y - x * 80 * y_sign});}
-                    else {
-                        break;
-                    }
-                }
-            })
-        }
+        if(offset < 0){ //when negative ie -15, -6, -4
+            if(offset >= -4){
+                // column_row_limits = {
+                //     row_limit: offset * -1, //might be buggy
+                //     column_limit: 0
+                // }//it cannot go before the 4th file for -4
 
-        for(let i = 0; i < coord_array.length; i++){
-            if(type == "MOVE"){
-                this.moves_list.push(coord_array[i]);
-            } else if(type == "ATTACK"){
-                this.attack_move_list.push(coord_array[i]);
+                return this.coords.x > (offset * -1)-1;
             }
+
+            let y = ((offset-4) + (Math.abs(offset-4) % this.board.width)) / this.board.width; //-15 => -2    -6 => -1
+            let x = offset - y * this.board.width // -15 => 1   -6 => 2
+
+            // column_row_limits = { //this is DEFINITELY buggy
+            //     row_limit: y < 0? (this.board.width-y) % this.board.width - 1: this.board.width-y,
+            //     column_limit: x < 0? (this.board.width-x) % this.board.width - 1: this.board.width-x
+            // }
+
+            row_valid = y < 0 ? this.coords.y > (this.board.width-y) % this.board.width - 1: this.coords.y < this.board.width-y
+            column_valid = x < 0? this.coords.x > (this.board.width-x) % this.board.width - 1: this.coords.x < this.board.width-x
+
+        } else if(offset >= 0){
+            if(offset <= 4){
+                // column_row_limits = {
+                //     row_limit: 8-offset, //might be buggy
+                //     column_limit: 0
+                // }
+
+                return this.coords.x < 8 - offset;
+            }
+
+            let y = ((offset+4) - ((offset+4) % this.board.width)) / this.board.width; //10 - 2 / 8 = 1
+            let x = offset - y * this.board.width; // 2
+
+            // column_row_limits = {
+            //     row_limit: y < 0? (this.board.width-y) % this.board.width - 1: this.board.width-y,
+            //     column_limit: x < 0? (this.board.width-x) % this.board.width - 1: this.board.width-x //could replace with (x * -1) -1: ?
+            // }
+
+            row_valid = y < 0? this.coords.y > (this.board.width-y) % this.board.width - 1: this.coords.y < this.board.width-y
+            column_valid = x < 0? this.coords.x > (this.board.width-x) % this.board.width - 1: this.coords.x < this.board.width-x
+
+            
         }
+        return row_valid && column_valid
+        //ok now it go this much x and this much y
+        //-3, -2, -1, 0, 1, 2, 3, 
+        //+5, +3, +1, +8, +6, +4, +2
+        //2,  1,  0,  8, 7, 6, 5
+        //-3 => max x = 2
+        //3 => max x = 5
+
+        //-2, -1, 0, 1, 2
+        //1,  0,  8, 7, 6
+        //y of negative 2 => max y = 1
+        //y of 2 => max y => 6
     }
 
+    // isOutOfBoard(index){
 
+    // }
 
+    //board index 1
 }
 
+//right now, the "move_range" is actually how far the piece can go in that direction
+//the real offsets are stored in board
+//i think each piece should probably just store an offset/custom offset
 
-//the only things we'll use move range for:
-//draw range? check
-//is movement in range? check
-//restrict piece movement? check
-//if diagonal range:
-//draw diagonal range
-//same range checker
-//so the problem is just about drawing the stupid fucking thing
-
-//add movement traits to signify how to draw the rest of the range (right now i will draw every square)
-//and movement restrictions
-
-//add range interpreter that looks at board and the raw move range and makes a list of possible moves legal to the piece
-//^ done
+//offset knight problem:
+//stop pushing legal moves when pieces are too close to a file/column
+//ie for an offset of 6, it will stop pushing when the piece reaches the second column / final row
+//for an offset of 7, it will stop pushing once the piece reaches the first column/final row
 
 
-//for each range
-//put x boxes into range, put y boxes into range, stop direction when hit piece
 
-//if attack range, only add coords when
-
-
-//if jump strict
-//everywhere except pieces
-//strict
-//pieces block range
-//jump strict
-//only at end of line
-
-//move range processes first, then attack range processes
-//move range stops before entity, attack range only adds at entities
+//what do i want
+//to prevent jumping across board
+//how to do??
+//set limits so if piece is on limit of range then range no appear or valid
+//with an offset of ___
+//if the offset is less than 4, then its on the same row
+//beyond 4, compensate for ys and xs
 //
